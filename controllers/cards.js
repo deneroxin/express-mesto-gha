@@ -1,12 +1,11 @@
 const Card = require('../models/card');
-const { DatabaseError, RequestError, Status } = require('../error');
+const { DatabaseError, Status } = require('../error');
 
 module.exports = {
   getAllCards: (req, res, next) => {
     Card.find({})
       .populate(['owner', 'likes'])
       .then((result) => {
-        if (!result) throw new DatabaseError('Массив карточек не найден');
         res.status(Status.OK).send(result);
       })
       .catch(next);
@@ -30,7 +29,6 @@ module.exports = {
     Card.findById(cardId)
       .then((foundCard) => {
         if (!foundCard) throw new DatabaseError('Карточка не найдена');
-        if (foundCard.owner.toString() !== req.user._id) throw new RequestError('Чужие карточки удалять нельзя');
         Card.findByIdAndRemove(cardId)
           .then((oldCard) => {
             res.status(Status.OK).send(oldCard);

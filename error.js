@@ -15,16 +15,7 @@ class DatabaseError extends Error {
   }
 }
 
-class RequestError extends Error {
-  constructor(message, statusCode = Status.BAD_REQUEST) {
-    super(message);
-    this.name = 'RequestError';
-    this.statusCode = statusCode;
-  }
-}
-
 module.exports = {
   DatabaseError,
-  RequestError,
   Status,
 };

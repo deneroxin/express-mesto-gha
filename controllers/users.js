@@ -1,11 +1,21 @@
 const User = require('../models/user');
-const { DatabaseError, RequestError, Status } = require('../error');
+const { DatabaseError, Status } = require('../error');
+
+function updateUserData(specificLogic) {
+  return (req, res, next) => {
+    User.findByIdAndUpdate(req.user._id, req.body, { runValidators: true, new: true })
+      .then((result) => {
+        res.status(Status.OK).send({ data: result });
+        specificLogic(result); // Например, здесь может быть выполнена специфичная логика
+      })
+      .catch(next);
+  };
+}
 
 module.exports = {
   getAllUsers: (req, res, next) => {
     User.find({})
       .then((result) => {
-        if (!result) throw new DatabaseError('Массив пользователей не найден');
         res.status(Status.OK).send(result);
       })
       .catch(next);
@@ -26,21 +36,12 @@ module.exports = {
       })
       .catch(next);
   },
-  // Запросы на /me и /me/avatar объединены.
-  // Их разделение позволило бы, например, запретить изменение
-  // "avatar" из-под /me, а "name" и "about" из-под /me/avatar.
-  // Только какой в этом смысл? Если у пользователя есть права менять любые свои данные,
-  // то какая серверу разница, с какого маршрута это будет производиться.
-  // Поэтому неясно, зачем разделили эти действия, выделив им разные маршруты:
-  // ведь у них одна и та же цель - частичное изменение данных пользователя.
-  updateUserData: (req, res, next) => {
-    if (Object.keys(req.body).every((key) => User.schema.obj[key] === undefined)) {
-      throw new RequestError('Запрос не содержит допустимых полей данных');
-    }
-    User.findByIdAndUpdate(req.user._id, req.body, { runValidators: true, new: true })
-      .then((result) => {
-        res.status(Status.OK).send({ data: result });
-      })
-      .catch(next);
-  },
+  // Сейчас логика в обоих запросах получается полностью идентичной, и её нечем дополнить.
+  // Чтобы попрактиковаться в реализации декоратора, я добавил ненужные действия:
+  updateUserInfo: updateUserData((userData) => {
+    console.log(`Updated user's name: ${userData.name}`);
+  }),
+  updateAvatar: updateUserData((userData) => {
+    console.log(`Updated avatar address: ${userData.avatar}`);
+  }),
 };
