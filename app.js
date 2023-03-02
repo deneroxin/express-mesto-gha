@@ -18,7 +18,9 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  res.status(err.status || err.statusCode || Status.INTERNAL_SERVER_ERROR).send({
+  const statusCode = (err.name === 'ValidationError' || err.name === 'CastError') ? Status.BAD_REQUEST
+    : (err.status || err.statusCode || Status.INTERNAL_SERVER_ERROR);
+  res.status(statusCode).send({
     name: err.name,
     message: err.message,
   });

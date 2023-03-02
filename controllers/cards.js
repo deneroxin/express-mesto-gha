@@ -32,8 +32,8 @@ module.exports = {
         if (!foundCard) throw new DatabaseError('Карточка не найдена');
         if (foundCard.owner.toString() !== req.user._id) throw new RequestError('Чужие карточки удалять нельзя');
         Card.findByIdAndRemove(cardId)
-          .then(() => {
-            res.status(Status.NO_CONTENT).end();
+          .then((oldCard) => {
+            res.status(Status.OK).send(oldCard);
           })
           .catch(next);
       })
