@@ -7,22 +7,22 @@ const { login, createUser } = require('../controllers/users');
 const auth = require('../middlewares/auth');
 const { patternURL } = require('../utils').validationPatterns;
 
-function isStrongPassword(value) {
-  if (validator.isStrongPassword(value)) return value;
-  throw new Error('Password is not strong enough');
-}
+// function isStrongPassword(value) {
+//   if (validator.isStrongPassword(value)) return value;
+//   throw new Error('Password is not strong enough');
+// }
 
 router.post('/signin', celebrate({
   body: Joi.object().keys({
-    email: Joi.string().required(),
-    password: Joi.string().required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(8).required(),
   }),
 }), login);
 
 router.post('/signup', celebrate({
   body: Joi.object().keys({
     email: Joi.string().email().required(),
-    password: Joi.string().custom(isStrongPassword).required(),
+    password: Joi.string().min(8).required(),
     name: Joi.string().min(2).max(30),
     about: Joi.string().min(2).max(30),
     avatar: Joi.string().pattern(patternURL), // используем свой валидатор, как и в схеме, по ТЗ
