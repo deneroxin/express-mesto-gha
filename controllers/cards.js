@@ -1,7 +1,8 @@
 const Card = require('../models/card');
-const { DatabaseError, Status } = require('../error');
+const { GeneralError, Status } = require('../error');
 
 module.exports = {
+
   getAllCards: (req, res, next) => {
     Card.find({})
       .populate(['owner', 'likes'])
@@ -10,6 +11,7 @@ module.exports = {
       })
       .catch(next);
   },
+
   createCard: (req, res, next) => {
     req.body.owner = req.user._id;
     Card.create(req.body)
@@ -24,11 +26,15 @@ module.exports = {
       })
       .catch(next);
   },
+
   deleteCard: (req, res, next) => {
     const { cardId } = req.params;
     Card.findById(cardId)
       .then((foundCard) => {
-        if (!foundCard) throw new DatabaseError('Карточка не найдена');
+        if (!foundCard) throw new GeneralError('Карточка не найдена');
+        if (foundCard.get('owner', String) !== req.user._id) {
+          throw new GeneralError('Нельзя удалять чужие карточки', Status.FORBIDDEN);
+        }
         Card.findByIdAndRemove(cardId)
           .then((oldCard) => {
             res.status(Status.OK).send(oldCard);
@@ -37,6 +43,7 @@ module.exports = {
       })
       .catch(next);
   },
+
   putLike: (req, res, next) => {
     Card.findByIdAndUpdate(
       req.params.cardId,
@@ -45,11 +52,12 @@ module.exports = {
     )
       .populate('likes')
       .then((updatedCard) => {
-        if (!updatedCard) throw new DatabaseError('Карточка не найдена');
+        if (!updatedCard) throw new GeneralError('Карточка не найдена');
         res.status(Status.OK).send(updatedCard);
       })
       .catch(next);
   },
+
   removeLike: (req, res, next) => {
     Card.findByIdAndUpdate(
       req.params.cardId,
@@ -58,9 +66,10 @@ module.exports = {
     )
       .populate('likes')
       .then((updatedCard) => {
-        if (!updatedCard) throw new DatabaseError('Карточка не найдена');
+        if (!updatedCard) throw new GeneralError('Карточка не найдена');
         res.status(Status.OK).send(updatedCard);
       })
       .catch(next);
   },
+
 };
