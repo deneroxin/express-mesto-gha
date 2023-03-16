@@ -1,37 +1,30 @@
 const Card = require('../models/card');
-const { GeneralError, Status } = require('../error');
+const { GeneralError, Status, throwError } = require('../error');
 
 module.exports = {
 
   getAllCards: (req, res, next) => {
     Card.find({})
-      .populate(['owner', 'likes'])
       .then((result) => {
         res.status(Status.OK).send(result);
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   createCard: (req, res, next) => {
     req.body.owner = req.user._id;
     Card.create(req.body)
-      // create() не поддерживает метод populate(), поэтому запросим созданный элемент явно
       .then((createdCard) => {
-        Card.findById(createdCard._id)
-          .populate(['owner', 'likes'])
-          .then((result) => {
-            res.status(Status.CREATED).send({ data: result });
-          })
-          .catch(next);
+        res.status(Status.CREATED).send({ data: createdCard });
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   deleteCard: (req, res, next) => {
     const { cardId } = req.params;
     Card.findById(cardId)
       .then((foundCard) => {
-        if (!foundCard) throw new GeneralError('Карточка не найдена');
+        if (!foundCard) throw new GeneralError('Карточка не найдена', Status.NOT_FOUND);
         if (foundCard.get('owner', String) !== req.user._id) {
           throw new GeneralError('Нельзя удалять чужие карточки', Status.FORBIDDEN);
         }
@@ -39,9 +32,9 @@ module.exports = {
           .then((oldCard) => {
             res.status(Status.OK).send(oldCard);
           })
-          .catch(next);
+          .catch((err) => throwError(err, next));
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   putLike: (req, res, next) => {
@@ -52,10 +45,10 @@ module.exports = {
     )
       .populate('likes')
       .then((updatedCard) => {
-        if (!updatedCard) throw new GeneralError('Карточка не найдена');
+        if (!updatedCard) throw new GeneralError('Карточка не найдена', Status.NOT_FOUND);
         res.status(Status.OK).send(updatedCard);
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   removeLike: (req, res, next) => {
@@ -66,10 +59,10 @@ module.exports = {
     )
       .populate('likes')
       .then((updatedCard) => {
-        if (!updatedCard) throw new GeneralError('Карточка не найдена');
+        if (!updatedCard) throw new GeneralError('Карточка не найдена', Status.NOT_FOUND);
         res.status(Status.OK).send(updatedCard);
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
 };

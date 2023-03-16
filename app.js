@@ -1,12 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
 const { errors } = require('celebrate');
 const { Status } = require('./error');
 
-const { ValidationError, CastError } = mongoose.Error;
 const { PORT = 3000 } = process.env;
 
 const app = express();
+
+app.use(helmet());
 
 app.use(express.json());
 
@@ -15,14 +17,9 @@ app.use(require('./routes'));
 app.use(errors());
 
 app.use((err, req, res, next) => {
-  let statusCode = err.status || err.statusCode || Status.INTERNAL_SERVER_ERROR;
-  if (err instanceof ValidationError || err instanceof CastError) {
-    statusCode = Status.BAD_REQUEST;
-  }
-  res.status(statusCode).send({
-    name: err.name,
-    message: err.message,
-  });
+  const { statusCode = Status.INTERNAL_SERVER_ERROR } = err;
+  const message = statusCode === Status.INTERNAL_SERVER_ERROR ? 'На сервере произошла ошибка' : err.message;
+  res.status(statusCode).send({ message });
 });
 
 mongoose.connect('mongodb://0.0.0.0:27017/mestodb', {

@@ -1,3 +1,7 @@
+const rateLimiter = require('express-rate-limit');
+
+const { GeneralError } = require('../error');
+
 const validationPatterns = {
   patternURL: /^https?:\/\/(?:www\.)?(?:[a-z\d-]+\.)+[a-z]+\/[-\w.~:/?#[\]@!$&'()*+,;=]+#?$/,
   // 1) protocol  1            2           3           4              5                 6
@@ -8,9 +12,22 @@ const validationPatterns = {
   // 6) optional # at the end
 };
 
+function createRateLimiter(minutes, tries) {
+  return rateLimiter({
+    windowMs: minutes * 60 * 1000,
+    max: tries,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (request, response, next, { message, statusCode }) => {
+      next(new GeneralError(message, statusCode));
+    },
+  });
+}
+
 module.exports = {
   validationPatterns,
   validators: {
     isURL: (string) => validationPatterns.patternURL.test(string),
   },
+  createRateLimiter,
 };

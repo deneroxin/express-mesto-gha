@@ -1,22 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/user');
-const { GeneralError, Status } = require('../error');
-
-function updateUserData(specificLogic) {
-  return (req, res, next) => {
-    User.findByIdAndUpdate(req.user._id, req.body, { runValidators: true, new: true })
-      .then((updatedUserData) => {
-        // поскольку req.user._id берётся из payload токена, а не путём поиска в базе данных,
-        // то нет уверенности, что в базе данных такой пользователь всё ещё есть.
-        // За время хранения токена база данных могла быть повреждена, и пользователь удалился.
-        if (!updatedUserData) throw new GeneralError('Вас нет в базе данных', Status.INTERNAL_SERVER_ERROR);
-        res.status(Status.OK).send({ data: updatedUserData });
-        specificLogic(updatedUserData); // Например, здесь может быть выполнена специфичная логика
-      })
-      .catch(next);
-  };
-}
+const { GeneralError, Status, throwError } = require('../error');
 
 module.exports = {
 
@@ -30,13 +15,13 @@ module.exports = {
           { expiresIn: '7d' },
         );
         res.status(Status.OK)
-          .cookie('jwt', `Bearer ${token}`, {
+          .cookie('jwt', token, {
             maxAge: 3600000 * 24 * 7,
             httpOnly: true,
           })
           .send(user);
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   getAllUsers: (req, res, next) => {
@@ -44,26 +29,26 @@ module.exports = {
       .then((arrayOfUsers) => {
         res.status(Status.OK).send(arrayOfUsers);
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   getUserById: (req, res, next) => {
     const { userId } = req.params;
     User.findById(userId)
       .then((user) => {
-        if (!user) throw new GeneralError(`Пользователь ${userId} не найден`);
+        if (!user) throw new GeneralError(`Пользователь ${userId} не найден`, Status.NOT_FOUND);
         res.status(Status.OK).send(user);
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   getCurrentUser: (req, res, next) => {
     User.findById(req.user._id)
       .then((user) => {
-        if (!user) throw new GeneralError('Вас нет в базе данных', Status.INTERNAL_SERVER_ERROR);
+        if (!user) throw new GeneralError('Вас нет в базе данных', Status.NOT_FOUND);
         res.status(Status.OK).send(user);
       })
-      .catch(next);
+      .catch((err) => throwError(err, next));
   },
 
   createUser: (req, res, next) => {
@@ -82,19 +67,20 @@ module.exports = {
             Status.CONFLICT,
           ));
         }
-        next(err);
+        throwError(err, next);
       });
   },
 
-  updateUserInfo: updateUserData((userData) => {
-    // Обработчик реализован с использованием декоратора (просто чтобы попрактиковаться),
-    // хотя общую логику дополнить нечем:
-    console.log(`Updated user's name: ${userData.name}`);
-  }),
+  updateUserData: (req, res, next) => {
+    User.findByIdAndUpdate(req.user._id, req.body, { runValidators: true, new: true })
+      .then((updatedUserData) => {
+        // поскольку req.user._id берётся из payload токена, а не путём поиска в базе данных,
+        // то нет уверенности, что в базе данных такой пользователь всё ещё есть.
+        // За время хранения токена база данных могла быть повреждена, и пользователь удалился.
+        if (!updatedUserData) throw new GeneralError('Вас нет в базе данных', Status.NOT_FOUND);
+        res.status(Status.OK).send({ data: updatedUserData });
+      })
+      .catch((err) => throwError(err, next));
+  },
 
-  updateAvatar: updateUserData((userData) => {
-    // Обработчик реализован с использованием декоратора (просто чтобы попрактиковаться),
-    // хотя общую логику дополнить нечем:
-    console.log(`Updated avatar address: ${userData.avatar}`);
-  }),
 };
